@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react"
-import Papa from "papaparse"
 import { T } from "./lang"
 import KPICards from "./components/KPICards"
 import BranchChart from "./components/BranchChart"
@@ -13,37 +12,43 @@ import Top5Products from "./components/Top5Products"
 
 export default function App() {
   const [data,    setData]    = useState([])
-  useEffect(() => {
-  fetch("https://sales-api-production-da66.up.railway.app/api/sales")
-    .then(res => res.json())
-    .then(apiData => {
-      const formatted = apiData.map(r => ({
-        LOCATION_DESC: r.location_desc,
-        ITM_DESC:      r.itm_desc,
-        BARCODE:       r.barcode,
-        ITM_CODE:      r.itm_code,
-        SCN_CODE:      r.scn_code,
-        SCN_DESC:      r.scn_desc,
-        UNIT_DESC:     r.unit_desc,
-        QTY:           String(r.qty),
-        UNIT_PRICE:    String(r.unit_price),
-        NET_PRICE:     String(r.net_price),
-        MONTH:         String(r.month),
-        YEAR:          String(r.year),
-        DAY:           String(r.day)
-      }))
-      setData(formatted)
-    })
-    .catch(err => console.error("API Error:", err))
-}, [])
   const [dark,    setDark]    = useState(false)
   const [lang,    setLang]    = useState("en")
+  const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({ branch:"All", product:"All", month:"All" })
 
   const t   = T[lang]
   const dir = lang==="ar" ? "rtl" : "ltr"
 
-  useEffect(()=>{
+  useEffect(() => {
+    fetch("https://sales-api-production-da66.up.railway.app/api/sales")
+      .then(res => res.json())
+      .then(apiData => {
+        const formatted = apiData.map(r => ({
+          LOCATION_DESC: r.location_desc,
+          ITM_DESC:      r.itm_desc,
+          BARCODE:       r.barcode,
+          ITM_CODE:      r.itm_code,
+          SCN_CODE:      r.scn_code,
+          SCN_DESC:      r.scn_desc,
+          UNIT_DESC:     r.unit_desc,
+          QTY:           String(r.qty),
+          UNIT_PRICE:    String(r.unit_price),
+          NET_PRICE:     String(r.net_price),
+          MONTH:         String(r.month),
+          YEAR:          String(r.year),
+          DAY:           String(r.day)
+        }))
+        setData(formatted)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error("API Error:", err)
+        setLoading(false)
+      })
+  }, [])
+
+  useEffect(() => {
     document.documentElement.setAttribute("dir", dir)
     const root = document.documentElement
     if(dark){
@@ -63,17 +68,9 @@ export default function App() {
       root.style.setProperty("--accent",     "#2563eb")
       document.body.style.background = "#f3f4f6"
     }
-  },[dark, dir])
+  }, [dark, dir])
 
-  function handleFile(e){
-    const file = e.target.files[0]
-    Papa.parse(file,{
-      header:true, skipEmptyLines:true, encoding:"UTF-8",
-      complete:(result)=>{ setData(result.data); setFilters({branch:"All",product:"All",month:"All"}) }
-    })
-  }
-
-  const filtered = data.filter(r=>{
+  const filtered = data.filter(r => {
     const matchBranch  = filters.branch==="All"  || r.LOCATION_DESC===filters.branch
     const matchProduct = filters.product==="All" || r.ITM_DESC===filters.product
     const matchMonth   = filters.month==="All"   || r.MONTH===filters.month
@@ -84,6 +81,12 @@ export default function App() {
     background:"var(--card)", color:"var(--text)", borderRadius:"10px",
     boxShadow: dark?"0 1px 4px rgba(0,0,0,0.4)":"0 1px 4px rgba(0,0,0,0.08)"
   }
+
+  if(loading) return (
+    <div style={{ display:"flex", justifyContent:"center", alignItems:"center", height:"100vh", fontSize:"18px", color:"#6b7280" }}>
+      Loading dashboard... ⏳
+    </div>
+  )
 
   return (
     <div style={{ padding:"2rem", maxWidth:"1400px", margin:"0 auto", color:"var(--text)", direction:dir }}>
@@ -97,7 +100,7 @@ export default function App() {
           )}
         </div>
         <div style={{ display:"flex", gap:"10px", alignItems:"center", flexWrap:"wrap" }}>
-         <span style={{ fontSize:"13px", color:"var(--text-muted)" }}>Live data ✅</span>
+          <span style={{ fontSize:"13px", color:"var(--text-muted)" }}>Live data ✅</span>
           <button onClick={()=>setLang(l=>l==="en"?"ar":"en")}
             style={{ padding:"8px 16px", borderRadius:"8px", border:"0.5px solid var(--border)", background:"var(--card)", color:"var(--text)", fontSize:"13px", cursor:"pointer", fontWeight:"500" }}>
             {lang==="en"?t.arabic:t.english}
