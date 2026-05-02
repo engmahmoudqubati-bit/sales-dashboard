@@ -6,6 +6,7 @@ import PieChartBranch from "./components/PieChartBranch"
 import MonthComparison from "./components/MonthComparison"
 import StatsPanel from "./components/StatsPanel"
 import AIAgent from "./components/AIAgent"
+import AIInsightPanel from "./components/AIInsightPanel"
 import Filters from "./components/Filters"
 import Top5Products from "./components/Top5Products"
 import LocationChart from "./components/LocationChart"
@@ -117,6 +118,7 @@ export default function App() {
         <>
           <Filters           data={data}     filters={filters} setFilters={setFilters} t={t} dir={dir} />
           <KPICards          data={filtered} cardStyle={cardStyle} dark={dark} t={t} />
+          <AIInsightPanel    data={filtered} cardStyle={cardStyle} dark={dark} t={t} filters={filters} lang={lang} />
           <MonthComparison   data={filtered} cardStyle={cardStyle} dark={dark} t={t} dir={dir} />
           <StatsPanel        data={filtered} cardStyle={cardStyle} dark={dark} t={t} />
           <LocationChart     data={filtered} cardStyle={cardStyle} dark={dark} t={t} dir={dir} />
