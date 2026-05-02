@@ -1,7 +1,10 @@
-export default function AIAgent({ data, cardStyle, dark, t }) {
+export default function AIAgent({ data, cardStyle, dark, t, filters }) {
   function fmt(n) { return Math.round(n).toLocaleString("en") }
+  function fmtK(n) { return n>=1000 ? `SAR ${(n/1000).toFixed(1)}K` : `SAR ${Math.round(n)}` }
 
   const totalRev = data.reduce((s,r)=>s+parseFloat(r.NET_PRICE||0),0)
+  const totalQty = data.reduce((s,r)=>s+parseFloat(r.QTY||0),0)
+
   const byBranch = {}
   data.forEach(r=>{ byBranch[r.LOCATION_DESC]=(byBranch[r.LOCATION_DESC]||0)+parseFloat(r.NET_PRICE||0) })
   const branchArr    = Object.entries(byBranch).sort((a,b)=>b[1]-a[1])
@@ -10,7 +13,9 @@ export default function AIAgent({ data, cardStyle, dark, t }) {
 
   const byProduct = {}
   data.forEach(r=>{ byProduct[r.ITM_DESC]=(byProduct[r.ITM_DESC]||0)+parseFloat(r.NET_PRICE||0) })
-  const topProduct = Object.entries(byProduct).sort((a,b)=>b[1]-a[1])[0]
+  const productArr  = Object.entries(byProduct).sort((a,b)=>b[1]-a[1])
+  const topProduct  = productArr[0]
+  const bottomProduct = productArr[productArr.length-1]
 
   const byMonth = {}
   data.forEach(r=>{ byMonth[r.MONTH]=(byMonth[r.MONTH]||0)+parseFloat(r.NET_PRICE||0) })
@@ -33,46 +38,55 @@ export default function AIAgent({ data, cardStyle, dark, t }) {
   const forecastLow  = Math.round(lastRev*0.8)
   const forecastHigh = Math.round(lastRev*1.2)
 
+  const prevMonthName = monthNames[parseInt(monthArr[monthArr.length-2]?.[0])]||""
+  const lastMonthName = monthNames[parseInt(monthArr[monthArr.length-1]?.[0])]||""
+
+  const activeFilters = []
+  if(filters?.branch && filters.branch!=="All") activeFilters.push(`Branch: ${filters.branch}`)
+  if(filters?.month  && filters.month !=="All") activeFilters.push(`Month: ${monthNames[parseInt(filters.month)]||filters.month}`)
+
   const leftBg    = dark?"#052e16":"#dcfce7"
   const leftColor = dark?"#86efac":"#166534"
   const rightBg    = dark?"#1e1b4b":"#f3e8ff"
   const rightColor = dark?"#c4b5fd":"#6b21a8"
 
-  const prevMonthName = monthNames[parseInt(monthArr[monthArr.length-2]?.[0])] || ""
-  const lastMonthName = monthNames[parseInt(monthArr[monthArr.length-1]?.[0])] || ""
-
   const leftInsights = [
     {
       icon:"🏆", title:t.topBranch,
-      text:`${topBranch?.[0]} ${t.leads} SAR ${fmt(topBranch?.[1])} — ${fmt(topBranch?.[1]/totalRev*100)}% ${t.ofRevenue}`
+      text:`${topBranch?.[0]} ${t.leads} SAR ${fmtK(topBranch?.[1])} — ${fmt(topBranch?.[1]/totalRev*100)}% ${t.ofRevenue}`
     },
     {
       icon:"⚠️", title:t.bottomBranch,
-      text:`${bottomBranch?.[0]} ${t.lowestAt} SAR ${fmt(bottomBranch?.[1])}. ${t.considerReviewing}`
+      text:`${bottomBranch?.[0]} ${t.lowestAt} ${fmtK(bottomBranch?.[1])}. ${t.considerReviewing}`
     },
     mom ? {
-      icon: parseFloat(mom)>=0?"📈":"📉", title: t.momGrowth,
-      text: `${t.revenuGrew} ${parseFloat(mom)>=0?t.grew:t.dropped} ${Math.abs(mom)}% ${t.fromMonth} ${prevMonthName} ${t.toMonth} ${lastMonthName}.`
+      icon: parseFloat(mom)>=0?"📈":"📉", title:t.momGrowth,
+      text:`${t.revenuGrew} ${parseFloat(mom)>=0?t.grew:t.dropped} ${Math.abs(mom)}% ${t.fromMonth} ${prevMonthName} ${t.toMonth} ${lastMonthName}.`
     } : null
   ].filter(Boolean)
 
   const rightInsights = [
     {
       icon:"🛍️", title:t.bestProduct,
-      text:`${topProduct?.[0]} ${t.topProductText} SAR ${fmt(topProduct?.[1])} — ${fmt(topProduct?.[1]/totalRev*100)}% ${t.ofRevenue}`
+      text:`${topProduct?.[0]} ${t.topProductText} ${fmtK(topProduct?.[1])} — ${fmt(topProduct?.[1]/totalRev*100)}% ${t.ofRevenue}`
     },
     {
       icon:"📊", title:t.statSummary,
-      text:`${t.meanVsMedian}: SAR ${fmt(mean)} | ${t.median}: SAR ${fmt(median)} | ${t.gap}: SAR ${fmt(mean-median)} | ${t.stdDevLabel}: SAR ${fmt(stdDev)}`
+      text:`${t.meanVsMedian}: ${fmtK(mean)} | ${t.median}: ${fmtK(median)} | ${t.gap}: ${fmtK(mean-median)} | ${t.stdDevLabel}: ${fmtK(stdDev)}`
     },
     monthArr.length>=2 ? {
       icon:"🔮", title:t.forecast,
-      text:`${t.conservative2}: SAR ${fmt(forecastLow)} · ${t.base2}: SAR ${fmt(forecast)} · ${t.optimistic2}: SAR ${fmt(forecastHigh)}`
+      text:`${t.conservative2}: ${fmtK(forecastLow)} · ${t.base2}: ${fmtK(forecast)} · ${t.optimistic2}: ${fmtK(forecastHigh)}`
     } : null
   ].filter(Boolean)
 
   return (
     <div style={{ ...cardStyle, padding:"20px", marginTop:"1.5rem" }}>
+      {activeFilters.length > 0 && (
+        <div style={{ background: dark?"#1e293b":"#f8fafc", borderRadius:"8px", padding:"10px 14px", marginBottom:"14px", fontSize:"12px", color:"var(--text-muted)" }}>
+          🔍 Insights based on filter: <strong style={{ color:"var(--text)" }}>{activeFilters.join(" · ")}</strong>
+        </div>
+      )}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
         <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
           {leftInsights.map((ins,i)=>(
